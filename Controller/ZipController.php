@@ -11,162 +11,183 @@ use DateTime;
 class ZipController extends Controller
 {
 
-    protected $datasec = array(); // array to store compressed data 
-    protected $ctrl_dir = array(); // central directory    
-    protected $eof_ctrl_dir = "\x50\x4b\x05\x06\x00\x00\x00\x00"; //end of Central directory record 
-    protected $old_offset = 0;  
+    public $centralDirectory = array(); // central directory
+    public $endOfCentralDirectory = "\x50\x4b\x05\x06\x00\x00\x00\x00"; //end of Central directory record
+    public $oldOffset = 0;
 
-    function addDir($name)    
-
-    // adds "directory" to archive - do this before putting any files in directory! 
-    // $name - name of directory... like this: "path/" 
-    // ...then you can add files using add_file with names like "path/file.txt" 
-    {   
-        $name = str_replace("\\", "/", $name);   
-
-        $fr = "\x50\x4b\x03\x04";  
-        $fr .= "\x0a\x00";    // ver needed to extract 
-        $fr .= "\x00\x00";    // gen purpose bit flag 
-        $fr .= "\x00\x00";    // compression method 
-        $fr .= "\x00\x00\x00\x00"; // last mod time and date 
-
-        $fr .= pack("V",0); // crc32 
-        $fr .= pack("V",0); //compressed filesize 
-        $fr .= pack("V",0); //uncompressed filesize 
-        $fr .= pack("v", strlen($name) ); //length of pathname 
-        $fr .= pack("v", 0 ); //extra field length 
-        $fr .= $name;   
-        // end of "local file header" segment 
-
-        // no "file data" segment for path 
-
-        // "data descriptor" segment (optional but necessary if archive is not served as file) 
-        //$fr .= pack("V",$crc); //crc32 
-        //$fr .= pack("V",$c_len); //compressed filesize 
-        //$fr .= pack("V",$unc_len); //uncompressed filesize 
-
-        // add this entry to array 
-        $this -> datasec[] = $fr;  
-
-        $new_offset = strlen(implode("", $this->datasec));  
-
-        // ext. file attributes mirrors MS-DOS directory attr byte, detailed 
-        // at http://support.microsoft.com/support/kb/articles/Q125/0/19.asp 
-
-        // now add to central record 
-        $cdrec = "\x50\x4b\x01\x02";  
-        $cdrec .="\x00\x00";    // version made by 
-        $cdrec .="\x0a\x00";    // version needed to extract 
-        $cdrec .="\x00\x00";    // gen purpose bit flag 
-        $cdrec .="\x00\x00";    // compression method 
-        $cdrec .="\x00\x00\x00\x00"; // last mod time & date 
-        $cdrec .= pack("V",0); // crc32 
-        $cdrec .= pack("V",0); //compressed filesize 
-        $cdrec .= pack("V",0); //uncompressed filesize 
-        $cdrec .= pack("v", strlen($name) ); //length of filename 
-        $cdrec .= pack("v", 0 ); //extra field length    
-        $cdrec .= pack("v", 0 ); //file comment length 
-        $cdrec .= pack("v", 0 ); //disk number start 
-        $cdrec .= pack("v", 0 ); //internal file attributes 
-        $ext = "\x00\x00\x10\x00";  
-        $ext = "\xff\xff\xff\xff";   
-        $cdrec .= pack("V", 16 ); //external file attributes  - 'directory' bit set 
-
-        $cdrec .= pack("V", $this -> old_offset ); //relative offset of local header 
-        $this -> old_offset = $new_offset;  
-
-        $cdrec .= $name;   
-        // optional extra field, file comment goes here 
-        // save to array 
-        $this -> ctrl_dir[] = $cdrec;   
-
-          
-    }  
-
-
-    function addFile($data, $name)    
-
-    // adds "file" to archive    
-    // $data - file contents 
-    // $name - name of file in archive. Add path if your want 
-
-    {   
-        $name = str_replace("\\", "/", $name);   
-        //$name = str_replace("\\", "\\\\", $name); 
-
-        $fr = "\x50\x4b\x03\x04";  
-        $fr .= "\x14\x00";    // ver needed to extract 
-        $fr .= "\x00\x00";    // gen purpose bit flag 
-        $fr .= "\x08\x00";    // compression method 
-        $fr .= "\x00\x00\x00\x00"; // last mod time and date 
-
-        $unc_len = strlen($data);   
-        $crc = crc32($data);   
-        $zdata = gzcompress($data);   
-        $zdata = substr( substr($zdata, 0, strlen($zdata) - 4), 2); // fix crc bug 
-        $c_len = strlen($zdata);   
-        $fr .= pack("V",$crc); // crc32 
-        $fr .= pack("V",$c_len); //compressed filesize 
-        $fr .= pack("V",$unc_len); //uncompressed filesize 
-        $fr .= pack("v", strlen($name) ); //length of filename 
-        $fr .= pack("v", 0 ); //extra field length 
-        $fr .= $name;   
-        // end of "local file header" segment 
-          
-        // "file data" segment 
-        $fr .= $zdata;   
-
-        // "data descriptor" segment (optional but necessary if archive is not served as file) 
-        $fr .= pack("V",$crc); //crc32 
-        $fr .= pack("V",$c_len); //compressed filesize 
-        $fr .= pack("V",$unc_len); //uncompressed filesize 
-
-        // add this entry to array 
-        $this -> datasec[] = $fr;  
-
-        $new_offset = strlen(implode("", $this->datasec));  
-
-        // now add to central directory record 
-        $cdrec = "\x50\x4b\x01\x02";  
-        $cdrec .="\x00\x00";    // version made by 
-        $cdrec .="\x14\x00";    // version needed to extract 
-        $cdrec .="\x00\x00";    // gen purpose bit flag 
-        $cdrec .="\x08\x00";    // compression method 
-        $cdrec .="\x00\x00\x00\x00"; // last mod time & date 
-        $cdrec .= pack("V",$crc); // crc32 
-        $cdrec .= pack("V",$c_len); //compressed filesize 
-        $cdrec .= pack("V",$unc_len); //uncompressed filesize 
-        $cdrec .= pack("v", strlen($name) ); //length of filename 
-        $cdrec .= pack("v", 0 ); //extra field length    
-        $cdrec .= pack("v", 0 ); //file comment length 
-        $cdrec .= pack("v", 0 ); //disk number start 
-        $cdrec .= pack("v", 0 ); //internal file attributes 
-        $cdrec .= pack("V", 32 ); //external file attributes - 'archive' bit set 
-
-        $cdrec .= pack("V", $this -> old_offset ); //relative offset of local header 
-//        echo "old offset is ".$this->old_offset.", new offset is $new_offset<br>"; 
-        $this -> old_offset = $new_offset;  
-
-        $cdrec .= $name;   
-        // optional extra field, file comment goes here 
-        // save to central directory 
-        $this -> ctrl_dir[] = $cdrec;   
-    }  
-
-    function getFile() { // dump out file    
-        $data = implode("", $this -> datasec);   
-        $ctrldir = implode("", $this -> ctrl_dir);   
-
-        return    
-            $data.   
-            $ctrldir.   
-            $this -> eof_ctrl_dir.   
-            pack("v", sizeof($this -> ctrl_dir)).     // total # of entries "on this disk" 
-            pack("v", sizeof($this -> ctrl_dir)).     // total # of entries overall 
-            pack("V", strlen($ctrldir)).             // size of central dir 
-            pack("V", strlen($data)).                 // offset to start of central dir 
-            "\x00\x00";                             // .zip file comment length 
+    protected $fileHandle;
+    protected $compressedDataLength = 0;
+    
+    
+    /**
+    * Creates a new ZipFile object
+    * 
+    * @param resource $_fileHandle file resource opened using fopen() with "w+" mode
+    * @return ZipFile
+    */
+    function setOutputFile($outputFile) {
+        $this->fileHandle = fopen($outputFile, "wb");
     }
+
+
+    /**
+        * Creates a new folder in the zip
+        *
+        * @param string $directoryName folder full path to the .zip root, e.g. "/qqq/www"
+        * @return void
+        */	
+    public function addDir($directoryName) {
+            $directoryName = str_replace("\\", "/", $directoryName);
+
+            $feedArrayRow = "\x50\x4b\x03\x04";
+            $feedArrayRow .= "\x0a\x00";
+            $feedArrayRow .= "\x00\x00";
+            $feedArrayRow .= "\x00\x00";
+            $feedArrayRow .= "\x00\x00\x00\x00";
+            $feedArrayRow .= pack("V",0);
+            $feedArrayRow .= pack("V",0);
+            $feedArrayRow .= pack("V",0);
+            $feedArrayRow .= pack("v", strlen($directoryName));
+            $feedArrayRow .= pack("v", 0 );
+            $feedArrayRow .= $directoryName;
+            $feedArrayRow .= pack("V",0);
+            $feedArrayRow .= pack("V",0);
+            $feedArrayRow .= pack("V",0);
+
+            fwrite($this->fileHandle, $feedArrayRow);
+            $this->compressedDataLength += strlen($feedArrayRow);
+            $newOffset = $this->compressedDataLength;
+
+            $addCentralRecord = "\x50\x4b\x01\x02";
+            $addCentralRecord .="\x00\x00";
+            $addCentralRecord .="\x0a\x00";
+            $addCentralRecord .="\x00\x00";
+            $addCentralRecord .="\x00\x00";
+            $addCentralRecord .="\x00\x00\x00\x00";
+            $addCentralRecord .= pack("V",0);
+            $addCentralRecord .= pack("V",0);
+            $addCentralRecord .= pack("V",0);
+            $addCentralRecord .= pack("v", strlen($directoryName) );
+            $addCentralRecord .= pack("v", 0 );
+            $addCentralRecord .= pack("v", 0 );
+            $addCentralRecord .= pack("v", 0 );
+            $addCentralRecord .= pack("v", 0 );
+            $addCentralRecord .= pack("V", 16 );
+            $addCentralRecord .= pack("V", $this->oldOffset );
+            $this->oldOffset = $newOffset;
+            $addCentralRecord .= $directoryName;
+            $this->centralDirectory[] = $addCentralRecord;
+    }
+
+    /**
+        * Adds a new file to the .zip in the specified .zip folder - previously created using addDir()!
+        *
+        * @param string $directoryName full path of the previously created .zip folder the file is inserted into
+        * @param string $filePath full file path on the disk
+        * @return void
+        */	
+    public function addFile($filePath, $directoryName)   {
+
+            // reading content into memory
+            $data = file_get_contents($filePath);
+
+            // create some descriptors
+            $directoryName = str_replace("\\", "/", $directoryName);
+            $feedArrayRow = "\x50\x4b\x03\x04";
+            $feedArrayRow .= "\x14\x00";
+            $feedArrayRow .= "\x00\x00";
+            $feedArrayRow .= "\x08\x00";
+            $feedArrayRow .= "\x00\x00\x00\x00";
+            $uncompressedLength = strlen($data);
+
+            // compression of the data
+            $compression = crc32($data);
+            // at this point filesize*2 memory is required for a moment but it will be released immediatelly
+            // once the compression itself done
+            $data = gzcompress($data);
+            // manipulations
+            $data = substr($data, 2, strlen($data) - 6);
+
+
+            // writing some info
+            $compressedLength = strlen($data);
+            $feedArrayRow .= pack("V",$compression);
+            $feedArrayRow .= pack("V",$compressedLength);
+            $feedArrayRow .= pack("V",$uncompressedLength);
+            $feedArrayRow .= pack("v", strlen($directoryName) );
+            $feedArrayRow .= pack("v", 0 );
+            $feedArrayRow .= $directoryName;
+            fwrite($this->fileHandle, $feedArrayRow);
+            $this->compressedDataLength += strlen($feedArrayRow);
+
+            // writing out the compressed content
+            fwrite($this->fileHandle, $data);
+            $this->compressedDataLength += $compressedLength;
+
+            // some more info...
+            $feedArrayRow = pack("V",$compression);
+            $feedArrayRow .= pack("V",$compressedLength);
+            $feedArrayRow .= pack("V",$uncompressedLength);
+            fwrite($this->fileHandle, $feedArrayRow);
+            $this->compressedDataLength += strlen($feedArrayRow);
+            $newOffset = $this->compressedDataLength;
+
+            // adding entry
+            $addCentralRecord = "\x50\x4b\x01\x02";
+            $addCentralRecord .="\x00\x00";
+            $addCentralRecord .="\x14\x00";
+            $addCentralRecord .="\x00\x00";
+            $addCentralRecord .="\x08\x00";
+            $addCentralRecord .="\x00\x00\x00\x00";
+            $addCentralRecord .= pack("V",$compression);
+            $addCentralRecord .= pack("V",$compressedLength);
+            $addCentralRecord .= pack("V",$uncompressedLength);
+            $addCentralRecord .= pack("v", strlen($directoryName) );
+            $addCentralRecord .= pack("v", 0 );
+            $addCentralRecord .= pack("v", 0 );
+            $addCentralRecord .= pack("v", 0 );
+            $addCentralRecord .= pack("v", 0 );
+            $addCentralRecord .= pack("V", 32 );
+            $addCentralRecord .= pack("V", $this->oldOffset );
+            $this->oldOffset = $newOffset;
+            $addCentralRecord .= $directoryName;
+            $this->centralDirectory[] = $addCentralRecord;
+
+    }
+
+    /**
+        * Close the .zip - we do not add more stuff
+        *
+        * @param boolean $closeFileHandle if true the file resource will be closed too
+        */
+    public function close($closeFileHandle = true) {
+
+            $controlDirectory = implode("", $this->centralDirectory);
+
+            fwrite($this->fileHandle, $controlDirectory);
+            fwrite($this->fileHandle, $this->endOfCentralDirectory);
+            fwrite($this->fileHandle, pack("v", sizeof($this->centralDirectory)));
+            fwrite($this->fileHandle, pack("v", sizeof($this->centralDirectory)));
+            fwrite($this->fileHandle, pack("V", strlen($controlDirectory)));
+            fwrite($this->fileHandle, pack("V", $this->compressedDataLength));
+            fwrite($this->fileHandle, "\x00\x00");
+
+            if($closeFileHandle)
+                    fclose($this->fileHandle);
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     function saveFile($directory, $file) {
         // ToDo: Include Save to File Method
@@ -200,8 +221,9 @@ class ZipController extends Controller
                                 $this->addDir($mainDirectory.$subDirectory.$file."/");
                                 $this->addDirectory($directory.$file.'/', $mainDirectory.$subDirectory.$file."/");
                             } elseif (is_file($directory.$file)) {
-                                $content = implode("",file($directory.$file));
-                                $this->addFile($content, $mainDirectory.$subDirectory.$file);
+                                //$content = implode("",file($directory.$file));
+                                //$this->addFile($content, $mainDirectory.$subDirectory.$file);
+                                $this->addFile($mainDirectory.$subDirectory.$file, $directory.$file);
                                 unset($content);
                             }
                         } else {

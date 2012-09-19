@@ -185,7 +185,7 @@ class ZipController extends Controller
         // ToDo: Include removeFile Method
     }
     
-    function addDirectory($directory, $subDirectory = '', $mainDirectory = null) {
+    function addDirectory($directory, $subDirectory = '', $mainDirectory = '') {
         // Öffnen eines bekannten Verzeichnisses und danach seinen Inhalt einlesen
         if (substr($directory, -1, 1) == "/") {
             if (is_dir($directory)) {
@@ -198,9 +198,9 @@ class ZipController extends Controller
                         if (!in_array($file, array('.', '..'))) {
                             if (is_dir($directory.$file)) {
                                 $this->addDir($mainDirectory.$subDirectory.$file."/");
-                                $this->addDirectory($directory.$file, $mainDirectory.$subDirectory.$file."/");
+                                $this->addDirectory($directory.$file.'/', $mainDirectory.$subDirectory.$file."/");
                             } elseif (is_file($directory.$file)) {
-                                $content = implode("",file($file));
+                                $content = implode("",file($directory.$file));
                                 $this->addFile($content, $mainDirectory.$subDirectory.$file);
                                 unset($content);
                             }

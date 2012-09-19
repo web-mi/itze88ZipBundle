@@ -1,0 +1,17 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    
+    <parameters>
+        <parameter key="itze88.zip.manager.class">itze88\ZipBundle\Controller\ZipController</parameter>
+    </parameters>
+    
+    <services>
+        
+        <service id="itze88.zip.manager" class="%itze88.zip.manager.class%" public="true" />
+
+    </services>
+</container>

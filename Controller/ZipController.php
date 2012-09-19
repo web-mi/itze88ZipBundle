@@ -41,9 +41,9 @@ class ZipController extends Controller
         // no "file data" segment for path 
 
         // "data descriptor" segment (optional but necessary if archive is not served as file) 
-        $fr .= pack("V",$crc); //crc32 
-        $fr .= pack("V",$c_len); //compressed filesize 
-        $fr .= pack("V",$unc_len); //uncompressed filesize 
+        //$fr .= pack("V",$crc); //crc32 
+        //$fr .= pack("V",$c_len); //compressed filesize 
+        //$fr .= pack("V",$unc_len); //uncompressed filesize 
 
         // add this entry to array 
         $this -> datasec[] = $fr;  
@@ -195,8 +195,8 @@ class ZipController extends Controller
                     }
                     while (($file = readdir($dh)) !== false) {
                         // ToDo: Get exclusions from config
-                        if (in_array($file, array('.', '..'))) {
-                            if (is_dir($file)) {
+                        if (!in_array($file, array('.', '..'))) {
+                            if (is_dir($directory.$file)) {
                                 $this->addDir($mainDirectory.$subDirectory.$file."/");
                                 $this->addDirectory($directory.$file, $mainDirectory.$subDirectory.$file."/");
                             } elseif (is_file($directory.$file)) {

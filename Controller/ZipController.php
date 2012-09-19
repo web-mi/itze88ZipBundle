@@ -223,7 +223,7 @@ class ZipController extends Controller
                             } elseif (is_file($directory.$file)) {
                                 //$content = implode("",file($directory.$file));
                                 //$this->addFile($content, $mainDirectory.$subDirectory.$file);
-                                $this->addFile($mainDirectory.$subDirectory.$file, $directory.$file);
+                                $this->addFile($directory.$file, $mainDirectory.$subDirectory.$file);
                                 unset($content);
                             }
                         } else {

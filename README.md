@@ -166,3 +166,9 @@ $zm->addDirectory('/var/www/symfony2/availableContent/zipThis/', 'addEverythingT
 > If zipThis/ has over 100 Files and you download it and unzip it, all files will appear in one directory addEverythingToThisZipFolder/
 
 >>>>>>> branch 'master' of https://github.com/itze88/itze88ZipBundle.git
+
+
+**Credits**
+Original source (CreateZipFile class) was created by Rochak Chauhan - www.rochakchauhan.com.
+Modified by ironhawk, attilaw '@' cygnussystems.hu
+Bundled and extended by Marc Itzenthaler (github(at)web-mi.de), on GitHub:(https://github.com/itze88)

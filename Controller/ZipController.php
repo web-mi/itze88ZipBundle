@@ -176,36 +176,6 @@ class ZipController extends Controller
                     fclose($this->fileHandle);
     }
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    function saveFile($directory, $file) {
-        // ToDo: Include Save to File Method
-        $content = $this->getFile();
-        
-        return true;
-    }
-    
-    function getFiles() {
-        // ToDo: Include getFiles Array Method
-        
-        return array();
-    }
-    
-    function removeFile($file) {
-        // ToDo: Include removeFile Method
-    }
-    
     function addDirectory($directory, $subDirectory = '', $mainDirectory = '') {
         // Öffnen eines bekannten Verzeichnisses und danach seinen Inhalt einlesen
         if (substr($directory, -1, 1) == "/") {
@@ -224,7 +194,7 @@ class ZipController extends Controller
                                 //$content = implode("",file($directory.$file));
                                 //$this->addFile($content, $mainDirectory.$subDirectory.$file);
                                 $this->addFile($directory.$file, $mainDirectory.$subDirectory.$file);
-                                unset($content);
+                                //unset($content);
                             }
                         } else {
                             //file excluded
